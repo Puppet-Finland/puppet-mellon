@@ -30,6 +30,8 @@ define mellon::config
   # For now, this only allow simple or'ed conditions
   if $melloncond {
     $mellonconds = $melloncond[0, -2].map | $x | { "${x} [OR]" } <<  $melloncond[-1]
+  } else {
+    $mellonconds = undef
   }
 
   if $subdir {
