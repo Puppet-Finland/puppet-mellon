@@ -1,12 +1,24 @@
 {
   "name": "puppetfinland-mellon",
   "version": "0.1.0",
-  "author": "Samuli Seppänen",
-  "summary": "",
+  "author": "Puppet-Finland team",
+  "summary": "Setup mod_auth_mellon and one or more mellon-protected Apache Locations",
   "license": "BSD-2-Clause",
-  "source": "",
+  "source": "https://github.com/Puppet-Finland/puppet-mellon",
   "dependencies": [
-
+    {
+      "name": "puppetlabs/apache",
+      "version_requirement": ">= 5.0.0 < 6.0.0"
+    },
+    {
+      "name": "puppetlabs/concat",
+      "version_requirement": ">= 6.0.0 < 7.0.0"
+    },
+    {
+      "name": "puppetlabs/stdlib",
+      "version_requirement": ">= 4.25.0 < 7.0.0"
+    }
+  ]
   ],
   "operatingsystem_support": [
     {
