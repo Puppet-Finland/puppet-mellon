@@ -1,0 +1,30 @@
+<Location <%= $location %>>
+    Require valid-user
+    AuthType "Mellon"
+    MellonEnable auth
+    MellonMergeEnvVars On
+    MellonEndpointPath <%= $mellon_endpoint_path %>
+    MellonSPMetadataFile <%= $mellon_dir %>/sp_metadata.xml
+    MellonIdPMetadataFile <%= $mellon_dir %>/idp_metadata.xml
+    MellonSPPrivateKeyFile <%= $mellon_dir %>/sp-private-key.pem
+    MellonSPCertFile <%= $mellon_dir %>/sp-cert.pem
+    MellonVariable "<%= $mellon_variable %>"
+<% if $melloncond { -%>
+<% $mellonconds.each |$cond| { -%>
+    MellonCond <%= $cond %>
+<% } -%>
+<% } -%>
+<% if $mellonsetenvnoprefix { -%>
+<% $mellonsetenvnoprefix.each |$prefix| { -%>
+    MellonSetEnvNoPrefix <%= $prefix %>
+<% } -%>
+<% } -%>
+</Location>
+
+<% if $ignore_location { -%>
+<Location ~ "<%= $ignore_location %>">
+  Satisfy Any
+  AuthType None
+  Require ip <%= $ignore_location_ip %>
+</Location>
+<% } -%>
