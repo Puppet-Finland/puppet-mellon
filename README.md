@@ -1,10 +1,11 @@
 # mellon
 
-Welcome to your new module. A short overview of the generated parts can be found
-in the [PDK documentation][1].
+This is a Puppet module for managing Apache
+[mod_auth_mellon](https://github.com/latchset/mod_auth_mellon), which "is an
+authentication module for Apache. It authenticates the user against a SAML 2.0
+IdP, and grants access to directories depending on attributes received from the
+IdP."
 
-The README template below provides a starting point with details about what
-information to include in your README.
 
 ## Table of Contents
 
@@ -12,106 +13,112 @@ information to include in your README.
 1. [Setup - The basics of getting started with mellon](#setup)
     * [What mellon affects](#what-mellon-affects)
     * [Setup requirements](#setup-requirements)
-    * [Beginning with mellon](#beginning-with-mellon)
 1. [Usage - Configuration options and additional functionality](#usage)
+    * [Getting the SP metadata from Keycloak](#getting-the-sp-metadata-from-keycloak)
 1. [Limitations - OS compatibility, etc.](#limitations)
 1. [Development - Guide for contributing to the module](#development)
 
 ## Description
 
-Briefly tell users why they might want to use your module. Explain what your
-module does and what kind of problems users can solve with it.
+This module allows creating one or more Apache2 Locations that are protected by
+mod_auth_mellon. Each Location is completely isolated from each other, meaning
+each will have its own IDP metadata, SP metadata, SP private key and SP certificate.
 
-This should be a fairly short description helps the user decide if your module
-is what they want.
+You might use this to, for example, protect Prometheus and Alertmanager running
+on the same node while using different SAML settings (e.g. MellonCond) for
+each. 
 
 ## Setup
 
-### What mellon affects **OPTIONAL**
+### What mellon affects
 
-If it's obvious what your module touches, you can skip this section. For
-example, folks can probably figure out that your mysql_instance module affects
-their MySQL instances.
+This module creates the Location entries and installs the files required by
+Mellon.
 
-If there's more that they should know about, though, this is the place to
-mention:
+### Setup requirements
 
-* Files, packages, services, or operations that the module will alter, impact,
-  or execute.
-* Dependencies that your module automatically installs.
-* Warnings or other important notices.
-
-### Setup Requirements **OPTIONAL**
-
-If your module requires anything extra before setting up (pluginsync enabled,
-another module, etc.), mention it here.
-
-If your most recent release breaks compatibility or requires particular steps
-for upgrading, you might want to include an additional "Upgrading" section here.
-
-### Beginning with mellon
-
-The very basic steps needed for a user to get the module up and running. This
-can include setup steps, if necessary, or it can be an example of the most basic
-use of the module.
+You need puppetlabs/apache, puppetlabs/concat and puppetlabs/stdlib to make use
+of this module.
 
 ## Usage
 
-Include usage examples for common use cases in the **Usage** section. Show your
-users how to use your module to solve problems, and be sure to include code
-examples. Include three to five examples of the most important or common tasks a
-user can accomplish with your module. Show users how to accomplish more complex
-tasks that involve different types, classes, and functions working in tandem.
+And example of how configure Mellon to protect Prometheus and Alertmanager:
 
-## Reference
+    ::mellon::config { 'alertmanager':
+        subdir         => 'alertmanager',
+        location       => '/alertmanager',
+        idp_metadata   => $idp_metadata,
+        sp_metadata    => $sp_metadata_alertmanager,
+        sp_private_key => $sp_private_key_alertmanager,
+        sp_cert        => $sp_cert_alertmanager,
+        melloncond     => $melloncond_alertmanager,
+      }
+  
+    ::mellon::config { 'prometheus':
+      subdir         => 'prometheus',
+      location       => '/prometheus',
+      idp_metadata   => $idp_metadata,
+      sp_metadata    => $sp_metadata_prometheus,
+      sp_private_key => $sp_private_key_prometheus,
+      sp_cert        => $sp_cert_prometheus,
+      melloncond     => $melloncond_prometheus,
+    }
 
-This section is deprecated. Instead, add reference information to your code as
-Puppet Strings comments, and then use Strings to generate a REFERENCE.md in your
-module. For details on how to add code comments and generate documentation with
-Strings, see the [Puppet Strings documentation][2] and [style guide][3].
+The values (above) would generally come via lookups from Hiera. The IDP
+metadata is always the same per-IDP. For details on the SP metadata see below.
 
-If you aren't ready to use Strings yet, manually create a REFERENCE.md in the
-root of your module directory and list out each of your module's classes,
-defined types, facts, functions, Puppet tasks, task plans, and resource types
-and providers, along with the parameters for each.
+The base Mellon setup is quite useless as-is. On top of it you want at least
+one HTTPS VirtualHost with a suitable reverse proxy configuration. For example,
+something like this, filling in the missing parameters as needed:
 
-For each element (class, defined type, function, and so on), list:
+    $proxy_pass = [ { 'path' => '/alertmanager', 'url' => 'http://localhost:9093' },
+                    { 'path' => '/prometheus',   'url' => 'http://localhost:9090/prometheus' }, ],
+    
+    $request_headers = ['set X-Forwarded-Proto "https"','set X-Forwarded-Port "443"']
 
-* The data type, if applicable.
-* A description of what the element does.
-* Valid values, if the data type doesn't make it obvious.
-* Default value, if any.
+    # https://github.com/Puppet-Finland/puppet-sslcert
+    include ::sslcert
+    
+    ::sslcert::set { 'example.org':
+      bundlefile => 'mybundle',
+    }
+    
+    include ::apache::mod::headers
+    include ::apache::mod::rewrite
+    
+    ::apache::vhost { $site_name:
+      servername      => $site_name,
+      port            => '80',
+      docroot         => $doc_root,
+      redirect_status => 'permanent',
+      redirect_dest   => "https://${site_name}/",
+    }
+    
+    ::apache::vhost { "${site_name}-ssl":
+      servername      => $site_name,
+      port            => '443',
+      docroot         => $doc_root,
+      proxy_pass      => $proxy_pass,
+      request_headers => $request_headers,
+      ssl             => true,
+      ssl_cert        => $cert_path,
+      ssl_key         => $key_path,
+      ssl_chain       => $chain_path,
+    }
 
-For example:
+### Getting the SP metadata from Keycloak
 
-```
-### `pet::cat`
-
-#### Parameters
-
-##### `meow`
-
-Enables vocalization in your cat. Valid options: 'string'.
-
-Default: 'medium-loud'.
-```
+First create a Keycloak client for you mellon configuration. Then export the SP
+metadata from the "Installation" tab. The metadata needs to be modified to
+include the correct URLs - by default they're undefined. After that you can add
+it to hiera(-eyaml).
 
 ## Limitations
 
-In the Limitations section, list any incompatibilities, known issues, or other
-warnings.
+Creation of VirtualHosts, reverse proxies and TLS/SSL is outside of
+the scope of this module.
 
 ## Development
 
-In the Development section, tell other users the ground rules for contributing
-to your project and how they should submit their work.
-
-## Release Notes/Contributors/Etc. **Optional**
-
-If you aren't using changelog, put your release notes here (though you should
-consider using changelog). You can also add any additional sections you feel are
-necessary or important to include here. Please use the `##` header.
-
-[1]: https://puppet.com/docs/pdk/latest/pdk_generating_modules.html
-[2]: https://puppet.com/docs/puppet/latest/puppet_strings.html
-[3]: https://puppet.com/docs/puppet/latest/puppet_strings_style.html
+If find bugs or soom for improvement in this module please file a issue, or
+better yet, issue a PR.
