@@ -3,16 +3,16 @@
 #
 define mellon::config
 (
-  String                            $sp_metadata,
-  String                            $idp_metadata,
-  String                            $sp_private_key,
-  String                            $sp_cert,
-  String                            $location = '/',
-  Optional[String]                  $subdir = undef,
-  Optional[Array[String]]           $melloncond = undef,
-  Optional[Array[String]]           $mellonsetenvnoprefix = undef,
-  Optional[String]                  $ignore_location = undef,
-  Optional[Stdlib::IP::Address::V4] $ignore_location_ip = undef,
+  String                  $sp_metadata,
+  String                  $idp_metadata,
+  String                  $sp_private_key,
+  String                  $sp_cert,
+  String                  $location = '/',
+  Optional[String]        $subdir = undef,
+  Optional[Array[String]] $melloncond = undef,
+  Optional[Array[String]] $mellonsetenvnoprefix = undef,
+  Optional[String]        $ignore_location = undef,
+  Optional[String]        $ignore_location_ip = undef,
 )
 {
   include ::mellon
