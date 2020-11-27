@@ -8,6 +8,7 @@ define mellon::config
   String                  $sp_private_key,
   String                  $sp_cert,
   String                  $location = '/',
+  Optional[String]        $confdir = undef,
   Optional[String]        $subdir = undef,
   Optional[Array[String]] $melloncond = undef,
   Optional[Array[String]] $mellonsetenvnoprefix = undef,
@@ -86,8 +87,12 @@ define mellon::config
                   'ignore_location'      => $ignore_location,
                   'ignore_location_ip'   => $ignore_location_ip, }
 
+
+
   ::apache::custom_config { "mellon-${title}":
+    confdir => $confdir,
     content => epp('mellon/mellon.conf.epp', $epp_params),
     require => Class['::apache'],
   }
 }
+
