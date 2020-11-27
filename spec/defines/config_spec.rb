@@ -12,8 +12,7 @@ describe 'mellon::config' do
       melloncond: :undef,
       mellonsetenvnoprefix: :undef,
       ignore_location: :undef,
-      ignore_location_ip: :undef
-    }
+      ignore_location_ip: :undef }
   end
 
   on_supported_os.each do |os, os_facts|
