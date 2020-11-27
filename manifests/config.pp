@@ -8,7 +8,7 @@ define mellon::config
   String                  $sp_private_key,
   String                  $sp_cert,
   String                  $location = '/',
-  String                  $confdir = undef,
+  Optional[String]        $confdir = undef,
   Optional[String]        $subdir = undef,
   Optional[Array[String]] $melloncond = undef,
   Optional[Array[String]] $mellonsetenvnoprefix = undef,
@@ -89,17 +89,10 @@ define mellon::config
 
 
 
-  if $confdir {
-    ::apache::custom_config { "mellon-${title}":
-      confdir => $confdir,
-      content => epp('mellon/mellon.conf.epp', $epp_params),
-      require => Class['::apache'],
-    }
-  } else {
-    ::apache::custom_config { "mellon-${title}":
-      content => epp('mellon/mellon.conf.epp', $epp_params),
-      require => Class['::apache'],
-    }
+  ::apache::custom_config { "mellon-${title}":
+    confdir => $confdir,
+    content => epp('mellon/mellon.conf.epp', $epp_params),
+    require => Class['::apache'],
   }
 }
 
