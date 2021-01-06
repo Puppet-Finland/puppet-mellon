@@ -3,6 +3,10 @@
     AuthType "Mellon"
     MellonEnable auth
     MellonMergeEnvVars On
+<% if $facts['os']['name'] == 'Ubuntu' and Float($facts['os']['release']['major']) >= 20.04 { -%>
+    MellonCookieSameSite none
+    MellonSecureCookie on
+<% } -%>
     MellonEndpointPath <%= $mellon_endpoint_path %>
     MellonSPMetadataFile <%= $mellon_dir %>/sp_metadata.xml
     MellonIdPMetadataFile <%= $mellon_dir %>/idp_metadata.xml
